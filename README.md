@@ -6,6 +6,8 @@
 
 ## Usage
 
+When running for the first time, please run `npm install`.
+To run the app, run the command `node main`.
 
 
 ## Developing
