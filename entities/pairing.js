@@ -97,4 +97,15 @@ function Pairing(pairedPerson1, pairedPerson2, database){
 	throw "Not implemented yet";
 }
 
+/**
+ * Creates a new pairing and puts it in the database
+ * @param email email of the person. Needs to be unique (case insensitive).
+ * @param db the database
+ * @param callback function to call after creation of the person, takes the person
+ */
+Pairing.generate = function(person1, person2, db, callback){
+	// TODO
+	throw "Not implemented yet";
+};
+
 module.exports = Pairing;
