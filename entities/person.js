@@ -59,6 +59,7 @@ function Person(personEmail, database){
 	 * @return True if the email is valid. False otherwise.
 	 */
 	function isValidEmail(email){
+		throw "Not implemented yet";
 		
 	}
 	

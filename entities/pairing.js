@@ -25,14 +25,20 @@ function Pairing(pairedPerson1, pairedPerson2, database){
 	
 	this.incrementPairingCount = function(){
 		pairingCount++;
+		// TODO : update database
+		throw "Not implemented yet";
 	};
 	
 	this.getPairingCount = function(){
 		return pairingCount;
+		// TODO : update database
+		throw "Not implemented yet";
 	};
 	
 	this.incrementTeamCount = function(){
 		teamCount++;
+		// TODO : update database
+		throw "Not implemented yet";
 	};
 	
 	
@@ -44,6 +50,8 @@ function Pairing(pairedPerson1, pairedPerson2, database){
 			throw "Team count is 0";
 		}
 		teamCount--;
+		// TODO : update database
+		throw "Not implemented yet";
 	};
 	
 	/**
