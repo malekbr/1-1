@@ -78,30 +78,36 @@ function Person(personId, personEmail){
 /**
  * Creates a new team and puts it in the database
  * @param email email of the person. Needs to be unique (case insensitive).
+ * @param pairingMap, modified
+ * @param peopleList, not modified
  * @param db the database
  * @param callback function to call after creation of the person, takes the person
  */
-Person.generate = function(email, pairingMap, db, callback){
+Person.generate = function(email, pairingMap, peopleList, db, callback){
 	db.serialize(function(){
 		var statement = db.prepare("INSERT INTO person(email) VALUES(?)", email, function(err, data){
 			if(err === null){
 				throw "Unable to add person "+email;
 			}
 			var person = new Person(data.lastID, email);
-			// create a pairing to every other person
+			// create a pairing to every other person (not necessarily available)
 			var mappedPairingsForPerson = [];
 			// callback when pairing created
+			/*
+			 * Takes in a list and an id and sets list[id] to be pairing
+			 * @param list
+			 * @param id
+			 */
 			function makeCallback(list, id){
 				return function(pairing){
 					list[id] = pairing;
 				};
 			}
-			for(var key in pairingMap){
-				if (key < person.getId()){
-					// TODO : change generate keys to Person objects
-					Pairing.generate(key, person.getId(), db, makeCallback(pairingMap[key], person.getId()));
+			for(var otherPerson in peopleList){
+				if (otherPerson.getId() < person.getId()){
+					Pairing.generate(otherPerson, person, db, makeCallback(pairingMap[otherPerson.getId()], person.getId()));
 				}else{
-					Pairing.generate(person.getId(), key, db, makeCallback(mappedPairingsForPerson, key));
+					Pairing.generate(person, otherPerson, db, makeCallback(mappedPairingsForPerson, otherPerson.getId()));
 				}
 			}
 			pairingMap[person.getId()] = mappedPairingsForPerson;
@@ -110,8 +116,8 @@ Person.generate = function(email, pairingMap, db, callback){
 				callback(person);
 			});
 		});
+		statement.run();
 	});
-	throw "Faulty implementation, fix todo";
 };
 
 module.exports = Person;

@@ -80,6 +80,7 @@ Team.generate = function(name, pairingMap, db, callback){
 			}
 			callback(new Team(data.lastID, name, pairingMap, db));
 		});
+		statement.run();
 	});
 };
 module.exports = Team;

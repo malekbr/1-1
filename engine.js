@@ -13,11 +13,14 @@ var readline = require('readline');
  * between different entities. It also creates a pairing map.
  * @param callback function to callback when loading is finished
  */
+
 var EngineGenerator = (function(){
 	//wrapped for singleton purposes 
 	var engine;
 	
 	function Engine(callback){
+		// method : put every database sensitive operation in db.serialize
+		// TODO : copy database file and work on it and then when you close the database save on the older one
 		var that = this;
 		/*
 		 * Database name:
@@ -52,15 +55,21 @@ var EngineGenerator = (function(){
 				teams[row.id] = new Team(row.id, row.name, pairingMap, db);
 				teamsIndexedByNames[row.name.toLowerCase()] = teams[row.id];
 			});
+		});
+		db.serialize(function(){
 			// Loads people
 			db.each("SELECT * FROM person", function(err, row){
 				people[row.id] = new Person(row.id, row.name);
 				peopleIndexedByEmails[row.name.toLowerCase()] = teams[row.id];
 			});
+		});
+		db.serialize(function(){
 			// Assigns people to teams
 			db.each("SELECT * FROM team_person_connection", function(err, row){
 				teams[row.team_id].add(people[row.person_id]);
 			});
+		});
+		db.serialize(function(){
 			// Generate pairings
 			db.each("SELECT * FROM pairing", function(err, row){
 				if(pairingMap[row.person1_id] === undefined){
@@ -69,6 +78,8 @@ var EngineGenerator = (function(){
 				pairingMap[row.person1_id][row.person2_id] = new Pairing(people[row.person1_id],
 						people[row.person2_id], db);
 			});
+		});
+		db.serialize(function(){
 			// Done loading
 			callback(that);
 		});
@@ -129,7 +140,7 @@ var EngineGenerator = (function(){
 				throw "Team "+teamName+" not found";
 			}
 			db.serialize(function(){
-				Person.generate(personEmail, function(person){
+				Person.generate(personEmail, pairingMap, people, db, function(person){
 					people[person.getId()] = person;
 					peopleIndexedByEmails[person.getName().toLowerCase()] = person;
 					teamsIndexedByNames[teamName.toLowerCase()].add(person);
