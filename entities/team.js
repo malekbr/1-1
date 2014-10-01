@@ -18,18 +18,49 @@ function Team(teamId, teamName, pairingMap, database){
 	 * Destroys the team : removes all the members and updates pairings affected.
 	 */
 	this.destroy = function(){
-		// TODO
-		throw "Not implemented yet";
+		var membersCopy = members.slice(0);
+		for(var member in membersCopy){
+			this.remove(member);
+		}
 	};
 	
+	
+	/**
+	 * Adds a person to the team as a member without updating pairings.
+	 * @param member a Person object, element to add to the team.
+	 */
+	this.addLoad = function(member){
+		if(member in members){
+			return;
+		}
+		members.push(member);
+	};
 	
 	/**
 	 * Adds a person to the team as a member and updates pairings affected.
 	 * @param member a Person object, element to add to the team.
 	 */
 	this.add = function(member){
-		// TODO
-		throw "Not implemented yet";
+		if(members.indexOf(member)>-1){
+			return;
+		}
+		for(var otherMemberIndex in members){
+			var otherMember = members[otherMemberIndex];
+			if(otherMember.getId()<member.getId()){
+				pairingMap[otherMember.getId()][member.getId()].incrementTeamCount();
+			}else if(otherMember.getId()>member.getId()){
+				pairingMap[member.getId()][otherMember.getId()].incrementTeamCount();
+			}
+		}
+		members.push(member);
+		var statement = db.prepare("INSERT INTO team_person_connection(team_id, person_id) VALUES(?, ?)", id, member.getId(), function(err){
+			if(err !== null){
+				console.log(err);
+				throw {message: "Unable to add team "+name};
+			}
+			
+		});
+		db.schedule(statement);
 	};
 	
 	/**
@@ -37,8 +68,28 @@ function Team(teamId, teamName, pairingMap, database){
 	 * @param member a Person object, element to remove to the team.
 	 */
 	this.remove = function(member){
-		// TODO
-		throw "Not implemented yet";
+		var index = members.indexOf(member);
+		if(index < 0){
+			throw {message: "member does not exist"};
+		}
+		for(var otherMemberIndex in members){
+			var otherMember = members[otherMemberIndex];
+			if(otherMember.getId()<member.getId()){
+				pairingMap[otherMember.getId()][member.getId()].decrementTeamCount();
+			}else if(otherMember.getId()>member.getId()){
+				pairingMap[member.getId()][otherMember.getId()].decrementTeamCount();
+			}
+		}
+		members.splice(index, 1); //remove member
+		member.removeTeam(that);
+		var statement = db.prepare("DELETE FROM team_person_connection WHERE team_id=? AND person_id=?", id, member.getId(), function(err){
+			if(err !== null){
+				console.log(err);
+				throw {message: "Unable to remove member "+member.getEmail()+" from team "+name};
+			}
+			
+		});
+		db.schedule(statement);
 	};
 	
 	/**
@@ -61,9 +112,17 @@ function Team(teamId, teamName, pairingMap, database){
 	this.getName = function(){
 		return name;
 	};
-	
-	throw "Not implemented yet";
 }
+
+/**
+* Keeps track of the ids and generates the next id (separation between id and database for speed and sync reasons)
+* @returns {Number} the next id
+*/
+Team.max_id = 0;
+Team.generateId = function(){
+	Team.max_id++;
+	return Team.max_id;
+};
 
 /**
  * Creates a new team and puts it in the database
@@ -72,15 +131,15 @@ function Team(teamId, teamName, pairingMap, database){
  * @param db the database
  * @param callback function to call after creation of the team, takes the team
  */
-Team.generate = function(name, pairingMap, db, callback){
-	db.serialize(function(){
-		var statement = db.prepare("INSERT INTO team(name) VALUES(?)", name, function(err, data){
-			if(err === null){
-				throw "Unable to add team "+name;
-			}
-			callback(new Team(data.lastID, name, pairingMap, db));
-		});
-		statement.run();
+Team.generate = function(name, pairingMap, db){
+	var team = new Team(Team.generateId(), name, pairingMap, db);
+	var statement = db.prepare("INSERT INTO team(id, name) VALUES(?, ?)", team.getId(), name, function(err){
+		if(err !== null){
+			console.log(err);
+			throw {message: "Unable to add team "+name};
+		}
 	});
+	db.schedule(statement);
+	return team;
 };
 module.exports = Team;

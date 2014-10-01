@@ -21,7 +21,7 @@ function Person(personId, personEmail){
 	
 	personEmail = personEmail.trim();
 	if(!isValidEmail(personEmail)){
-		throw "Invalid email "+personEmail;
+		throw {message: "Invalid email "+personEmail};
 	}
 	var email = personEmail;
 	var id = personId;
@@ -43,9 +43,29 @@ function Person(personId, personEmail){
 	 * @param team a Team object.
 	 */
 	this.addTeam = function(team){
-		if(!(team in teams)){
+		if(teams.indexOf(team)>-1){
 			teams.push(teams);
 		}
+	};
+	
+	/**
+	 * Checks if a person is in a team.
+	 * @param team a Team object.
+	 */
+	this.inTeam = function(team){
+		return team in teams;
+	};
+	
+	/**
+	 * Remove team from team list.
+	 * @param team a Team object.
+	 */
+	this.removeTeam = function(team){
+		var index = teams.indexOf(team);
+		if(index < 0){
+			throw {message: "team does not exist"};
+		}
+		teams.splice(index, 1);
 	};
 	
 	/**
@@ -76,6 +96,16 @@ function Person(personId, personEmail){
 }
 
 /**
+ * Keeps track of the ids and generates the next id (separation between id and database for speed and sync reasons)
+ * @returns {Number} the next id
+ */
+Person.max_id = 0;
+Person.generateId = function(){
+	Person.max_id++;
+	return Person.max_id;
+};
+
+/**
  * Creates a new team and puts it in the database
  * @param email email of the person. Needs to be unique (case insensitive).
  * @param pairingMap, modified
@@ -83,41 +113,28 @@ function Person(personId, personEmail){
  * @param db the database
  * @param callback function to call after creation of the person, takes the person
  */
-Person.generate = function(email, pairingMap, peopleList, db, callback){
-	db.serialize(function(){
-		var statement = db.prepare("INSERT INTO person(email) VALUES(?)", email, function(err, data){
-			if(err === null){
-				throw "Unable to add person "+email;
-			}
-			var person = new Person(data.lastID, email);
-			// create a pairing to every other person (not necessarily available)
-			var mappedPairingsForPerson = [];
-			// callback when pairing created
-			/*
-			 * Takes in a list and an id and sets list[id] to be pairing
-			 * @param list
-			 * @param id
-			 */
-			function makeCallback(list, id){
-				return function(pairing){
-					list[id] = pairing;
-				};
-			}
-			for(var otherPerson in peopleList){
-				if (otherPerson.getId() < person.getId()){
-					Pairing.generate(otherPerson, person, db, makeCallback(pairingMap[otherPerson.getId()], person.getId()));
-				}else{
-					Pairing.generate(person, otherPerson, db, makeCallback(mappedPairingsForPerson, otherPerson.getId()));
-				}
-			}
-			pairingMap[person.getId()] = mappedPairingsForPerson;
-			//callback when everything loads
-			db.serialize(function(){
-				callback(person);
-			});
-		});
-		statement.run();
+Person.generate = function(email, pairingMap, peopleList, db){
+	var person = new Person(Person.generateId(), email);
+	var statement = db.prepare("INSERT INTO person(id, email) VALUES(?, ?)", person.getId(), email, function(err){
+		if(err !== null){
+			console.log(err);
+			throw {message: "Unable to add person "+email};
+		}
 	});
+	// create a pairing to every other person (not necessarily available)
+	pairingMap[person.getId()] = [];
+	for(var otherPersonIndex in peopleList){
+		var otherPerson = peopleList[otherPersonIndex];
+		if (otherPerson.getId() < person.getId()){
+			pairingMap[otherPerson.getId()][person.getId()]=
+				Pairing.generate(otherPerson, person, db);
+		}else{
+			pairingMap[person.getId()][otherPerson.getId()]=
+				Pairing.generate(otherPerson, person, db);
+		}
+	}
+	db.schedule(statement);
+	return person;
 };
 
 module.exports = Person;

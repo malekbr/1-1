@@ -13,7 +13,7 @@
  */
 function Pairing(pairingId, pairedPerson1, pairedPerson2, mPairingCount, mTeamCount, database){
 	if(pairedPerson1.id >= pairedPerson2.id){
-		throw "pairing ids should be in increasing order";
+		throw {message: "pairing ids should be in increasing order"};
 	}
 	var that = this;
 	var person1 = pairedPerson1,
@@ -23,23 +23,27 @@ function Pairing(pairingId, pairedPerson1, pairedPerson2, mPairingCount, mTeamCo
 	var pairingCount = mPairingCount;
 	var teamCount = mTeamCount;
 	
-	var pairingCountUpdateStatement = db.prepare("UPDATE team SET pairing_count = ? WHERE id = ?", function(err, data){
-		if(err === null){
-			throw "Unable to update pairing "+id;
-		}
-	});
+	var pairingCountUpdateStatementPrepare = function(pairingCount,id){
+		return db.prepare("UPDATE pairing SET pairing_count = ? WHERE id = ?",pairingCount,id, function(err){
+			if(err !== null){
+				console.log(err);
+				throw {message: "Unable to update pairing "+id};
+			}
+		});
+	};
 	
-	var teamCountUpdateStatement = db.prepare("UPDATE team SET team_count = ? WHERE id = ?", function(err, data){
-		if(err === null){
-			throw "Unable to update pairing "+id;
-		}
-	});
+	var teamCountUpdateStatementPrepare = function(teamCount,id){
+		return db.prepare("UPDATE pairing SET team_count = ? WHERE id = ?",teamCount,id, function(err){
+			if(err !== null){
+				console.log(err);
+				throw {message: "Unable to update pairing "+id};
+			}
+		});
+	};
 	
 	this.incrementPairingCount = function(){
 		pairingCount++;
-		db.serialize(function(){
-			pairingCountUpdateStatement.run([pairingCount, id]);
-		});
+		db.schedule(pairingCountUpdateStatementPrepare(pairingCount, id));
 	};
 	
 	this.getPairingCount = function(){
@@ -48,9 +52,7 @@ function Pairing(pairingId, pairedPerson1, pairedPerson2, mPairingCount, mTeamCo
 	
 	this.incrementTeamCount = function(){
 		teamCount++;
-		db.serialize(function(){
-			teamCountUpdateStatement.run([teamCount, id]);
-		});
+		db.schedule(teamCountUpdateStatementPrepare(teamCount, id));
 	};
 	
 	
@@ -59,48 +61,56 @@ function Pairing(pairingId, pairedPerson1, pairedPerson2, mPairingCount, mTeamCo
 	 */
 	this.decrementTeamCount = function(){
 		if(teamCount === 0){
-			throw "Team count is 0";
+			throw {message: "Team count is 0"};
 		}
 		teamCount--;
-		db.serialize(function(){
-			teamCountUpdateStatement.run([teamCount, id]);
-		});
+		db.schedule(teamCountUpdateStatementPrepare(teamCount, id));
 	};
 	
 	/**
 	 * Checks if pairing is available given other people chosen in other pairings
 	 * @param peopleAlreadyPicked an associative array where every key is 
 	 *        an id of a person already chosen.
-	 * @return True if pairing is available. False otherwise.
+	 * @return boolean True if pairing is available. False otherwise.
 	 */
 	this.isAvailable = function(peopleAlreadyPicked){
-		return peopleAlreadyPicked[person1.getId()] === undefined && peopleAlreadyPicked[person1.getId()] === undefined;
+		return !(person1.getId() in peopleAlreadyPicked || person2.getId() in peopleAlreadyPicked);
+	};
+	
+	/**
+	 * Adds pairing to people already picked
+	 * @param peopleAlreadyPicked an associative array where every key is 
+	 *        an id of a person already chosen.
+	 */
+	this.pickPeople = function(peopleAlreadyPicked){
+		peopleAlreadyPicked[person1.getId()] = true;
+		peopleAlreadyPicked[person2.getId()] = true;
 	};
 	
 	/**
 	 * Checks if there exists a team that contains both people.
-	 * @return True if pairing is valid. False otherwise.
+	 * @return boolean True if pairing is valid. False otherwise.
 	 */
-	this.isAValidPairing = function(){
+	this.isValidPairing = function(){
 		return teamCount > 0;
 	};
 	
 	/**
-	 * @return the id of the pairing
+	 * @return int the id of the pairing
 	 */
 	this.getId = function(){
 		return id;
 	};
 	
 	/**
-	 * @return the object representing person1
+	 * @return Person the object representing person1
 	 */
 	this.getPerson1 = function(){
 		return person1;
 	};
 	
 	/**
-	 * @return the object representing person2
+	 * @return Person the object representing person2
 	 */
 	this.getPerson2 = function(){
 		return person2;
@@ -108,25 +118,35 @@ function Pairing(pairingId, pairedPerson1, pairedPerson2, mPairingCount, mTeamCo
 }
 
 /**
+ * Keeps track of the ids and generates the next id (separation between id and database for speed and sync reasons)
+ * @returns {Number} the next id
+ */
+Pairing.max_id = 0;
+Pairing.generateId = function(){
+	Pairing.max_id++;
+	return Pairing.max_id;
+};
+
+/**
  * Creates a new pairing and puts it in the database
  * @param email email of the person. Needs to be unique (case insensitive).
  * @param db the database
  * @param callback function to call after creation of the person, takes the person
+ * @return Pairing the pairing
  */
-Pairing.generate = function(person1, person2, db, callback){
+Pairing.generate = function(person1, person2, db){
 	if(person1.getId()>= person2.getId()){
-		throw "Ids not in increasing order";
+		throw {message: "Ids not in increasing order"};
 	}
-	db.serialize(function(){
-		var statement = db.prepare("INSERT INTO pairing(person1_id,person2_id,pairing_count,team_count) VALUES(?,?,0,0)", [person1.getId(), person2.getId()], function(err, data){
-			if(err === null){
-				throw "Unable to establish a connection between "+person1.getEmail()+" and "+person2.getEmail();
-			}
-			var pairing = new Pairing(data.lastID, person1, person2, 0, 0, db);
-			callback(pairing);
-		});
-		statement.run();
+	var pairing = new Pairing(Pairing.generateId(), person1, person2, 0, 0, db);
+	var statement = db.prepare("INSERT INTO pairing(id, person1_id,person2_id,pairing_count,team_count) VALUES(?,?,?,0,0)", pairing.getId(), person1.getId(), person2.getId(), function(err){
+		if(err !== null){
+			console.log(err);
+			throw {message: "Unable to establish a connection between "+person1.getEmail()+" and "+person2.getEmail()};
+		}
 	});
+	db.schedule(statement);
+	return pairing;
 };
 
 module.exports = Pairing;
