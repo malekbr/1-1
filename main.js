@@ -1,9 +1,6 @@
-
 var EngineGenerator = require('./engine');
-var console = require('./console');
+var terminal = require('./terminal');
 
 EngineGenerator.getInstance(function(engine){
-	// TODO : test generateToFile
-	console.run(engine);
-	//engine.close();
+	terminal.run(engine);
 });

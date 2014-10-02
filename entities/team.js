@@ -15,9 +15,9 @@ function Team(teamId, teamName, pairingMap, database){
 	var members = [];
 	
 	/**
-	 * Destroys the team : removes all the members and updates pairings affected.
+	 * Empties the team : removes all the members and updates pairings affected.
 	 */
-	this.destroy = function(){
+	this.empty = function(){
 		var membersCopy = members.slice(0);
 		for(var member in membersCopy){
 			this.remove(member);
@@ -33,6 +33,7 @@ function Team(teamId, teamName, pairingMap, database){
 		if(member in members){
 			return;
 		}
+		member.addTeam(this);
 		members.push(member);
 	};
 	
@@ -53,6 +54,7 @@ function Team(teamId, teamName, pairingMap, database){
 			}
 		}
 		members.push(member);
+		member.addTeam(this);
 		var statement = db.prepare("INSERT INTO team_person_connection(team_id, person_id) VALUES(?, ?)", id, member.getId(), function(err){
 			if(err !== null){
 				console.log(err);
@@ -70,7 +72,7 @@ function Team(teamId, teamName, pairingMap, database){
 	this.remove = function(member){
 		var index = members.indexOf(member);
 		if(index < 0){
-			throw {message: "member does not exist"};
+			throw {message: "member does not exist in team"};
 		}
 		for(var otherMemberIndex in members){
 			var otherMember = members[otherMemberIndex];

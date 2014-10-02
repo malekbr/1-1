@@ -43,8 +43,8 @@ function Person(personId, personEmail){
 	 * @param team a Team object.
 	 */
 	this.addTeam = function(team){
-		if(teams.indexOf(team)>-1){
-			teams.push(teams);
+		if(teams.indexOf(team)===-1){
+			teams.push(team);
 		}
 	};
 	
@@ -63,7 +63,7 @@ function Person(personId, personEmail){
 	this.removeTeam = function(team){
 		var index = teams.indexOf(team);
 		if(index < 0){
-			throw {message: "team does not exist"};
+			throw {message: "Remove from team : team does not exist"};
 		}
 		teams.splice(index, 1);
 	};

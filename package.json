@@ -1,5 +1,13 @@
 {
+	"name":"oneplusone",
+	"description": "1+1 implementation for IFTTT",
+	"author": "Malek Ben Romdhane <malek@mit.edu>",
 	"dependencies":{
 		"sqlite3":"3.0.0"
-	}
+	},
+	"repository": {
+		  "type": "git",
+		  "url": "git://github.com/malekbr/1-1.git"
+		},
+	"engine":"node >= 0.10.32"
 }

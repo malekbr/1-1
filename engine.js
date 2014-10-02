@@ -32,7 +32,7 @@ var EngineGenerator = (function(){
 		 * | id (unique, auto-increment) | name (unique, case insensitive) |
 		 * person :
 		 * | id (unique, auto-increment) | email (unique, case insensitive) |
-		 * team-person-connection :
+		 * team_person_connection :
 		 * | id (unique, auto-increment) | team_id | person_id |
 		 * pairing :
 		 * | id (unique, auto-increment) | person1_id | person2_id | pairing_count | team_count |
@@ -120,6 +120,7 @@ var EngineGenerator = (function(){
 		 * which adds a team to the database called team-name or
 		 *   add email team-name
 		 * which adds the email to the team.
+		 * Empty lines are tolerated.
 		 * The file is case insensitive.
 		 * @param filename the path to the file to load
 		 */
@@ -141,7 +142,7 @@ var EngineGenerator = (function(){
 						if(that.canAddPersonToTeam(result[1], result[2])){
 							that.addPersonToTeam(result[1], result[2]);
 						}
-					}else if(!(/^\s+$/.test(line))){
+					}else if(!(/^\s*$/.test(line))){
 						throw {message:"Invalid command : "+ line};
 					}
 				}
@@ -153,7 +154,7 @@ var EngineGenerator = (function(){
 		 * @param teamName a string
 		 */
 		this.addTeam = function(teamName){
-			var team = Team.generate(teamName, pairingMap, db); 
+			var team = Team.generate(teamName, pairingMap, db);
 			teams[team.getId()] = team;
 			teamsIndexedByNames[team.getName().toLowerCase()] = team;
 		};
@@ -191,29 +192,40 @@ var EngineGenerator = (function(){
 		};
 		
 		/**
-		 * removes a team from the database
+		 * removes all members from team
 		 * @param teamName needs to be in the database
 		 */
-		this.removeTeam = function(teamName){
-			// TODO
-			throw {message: "Not implemented yet"};
+		this.emptyTeam = function(teamName){
+			if(teamName.toLowerCase() in teamsIndexedByNames){
+				var team = teamsIndexedByNames[teamName.toLowerCase()];
+				team.empty();
+			}else{
+				throw {message: "Team "+teamName+" does not exist."};
+			}
 		};
 		
 		/**
-		 * @param personName a string
-		 * @param teamName a string
+		 * @param personEmail String
+		 * @param teamName String
 		 */
-		this.removePersonFromTeam = function(personName, teamName){
-			// TODO
-			throw {message: "Not implemented yet"};
+		this.removePersonFromTeam = function(personEmail, teamName){
+			if(!(teamName.toLowerCase() in teamsIndexedByNames)){
+				throw {message: "Team "+teamName+" does not exist."};
+			}
+			if(!(personEmail.toLowerCase() in peopleIndexedByEmails)){
+				throw {message: "Person "+personEmail+" does not exist."};
+			}
+			teamsIndexedByNames[teamName.toLowerCase()].remove(peopleIndexedByEmails[personEmail.toLowerCase()]);
 		};
 		
 		/**
-		 * @param personName a string
+		 * @param personEmail String
 		 */
-		this.removePersonFromAllTeams = function(personName){
-			// TODO
-			throw {message: "Not implemented yet"};
+		this.removePersonFromAllTeams = function(personEmail){
+			if(!(personEmail.toLowerCase() in peopleIndexedByEmails)){
+				throw {message: "Person "+personEmail+" does not exist."};
+			}
+			peopleIndexedByEmails[personEmail.toLowerCase()].removeFromAllTeams();
 		};
 		
 		/**

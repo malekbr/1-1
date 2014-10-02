@@ -1,0 +1,19 @@
+team The Beatles
+	add paul@mccartney.org The Beatles
+	add john@lennon.com The Beatles
+	add george@harrison.org The Beatles
+	add ringo@starr.org The Beatles
+team The Quarrymen
+	add john@lennon.org The Quarrymen
+	add paul@mccartney.org The Quarrymen
+	add stu@sutcliffe.org The Quarrymen
+team Wings
+	add paul@mccartney.org Wings
+	add linda@mccartney.org Wings
+team Plastic Ono Band
+	add john@lennon.org Plastic Ono Band
+	add yoko@ono.org Plastic Ono Band
+team Traveling Wilburys
+	add george@harrison.org Traveling Wilburys
+	add tom@petty.org Traveling Wilburys
+	add roy@orbison.org Traveling Wilburys
