@@ -19,7 +19,8 @@ The commands are as follows (this list is accessible through the command-line us
 * `generate [file]` : Generates the next pairing. If file is specified, it appends the generated data to the file. There shouldn't be quotes around the file path if it contains spaces.
 * `load file` : Loads a file to the database. The file needs to have lines that are either of the form
    - `team team-name` which adds a team to the database called team-name.
-   - `add email team-name` which adds the email to the team. 
+   - `add email team-name` which adds the email to the team.
+   
    Empty lines are tolerated. The file is case insensitive.
 * `addTeam team`: Adds team to the database
 * `addPerson email team` : Adds person to team (needs to exist).
